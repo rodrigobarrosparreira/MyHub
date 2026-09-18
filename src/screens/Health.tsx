@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HealthStackParamList } from "../types/navigation";
+import { RootStackParamList } from "../types/navigation";
 
-type Props = NativeStackScreenProps<HealthStackParamList, "HealthMain">;
+type Props = NativeStackScreenProps<RootStackParamList, "Health">;
 
 export default function Health( {navigation}: Props ){
     return(

@@ -4,9 +4,3 @@ export type RootStackParamList = {
     Health: undefined;
     Gym: undefined;
 };
-
-//mapa da pilha da parte de saúde (quais as telas que vão ficar dentro da tela de Health)
-export type HealthStackParamList = {
-    HealthMain: undefined;
-    Gym: undefined;
-};

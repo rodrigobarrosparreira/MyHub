@@ -8,6 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Home from './src/screens/Home';
 import Health from './src/screens/Health';
 import Gym from './src/screens/Gym';
+import Exercise from './src/screens/Exercise';
 
 import RadialMenu, { RadialMenuItem } from './src/components/RadialMenu';
 import { navigationRef, navigate } from './src/navigation/navigationRef';
@@ -51,6 +52,12 @@ export default function App() {
           <Stack.Screen name="Home" component={Home} options={{ title: 'Início' }} />
           <Stack.Screen name="Health" component={Health} options={{ title: 'Saúde / Fitness' }} />
           <Stack.Screen name="Gym" component={Gym} options={{ title: 'Treino' }} />
+          <Stack.Screen
+            name="Exercise"
+            component={Exercise}
+            // o título do cabeçalho é o nome do exercício, que vem nos parâmetros da rota
+            options={({ route }) => ({ title: route.params.nome })}
+          />
         </Stack.Navigator>
       </NavigationContainer>
 

@@ -3,6 +3,7 @@ export type RootStackParamList = {
     Home: undefined;
     Health: undefined;
     Gym: undefined;
+    Reminders: undefined;
     // tela de um exercício específico: recebe o id (pra achar os dados) e o nome (pro título)
     Exercise: { id: string; nome: string };
 };

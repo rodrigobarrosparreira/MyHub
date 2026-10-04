@@ -9,6 +9,7 @@ import Home from './src/screens/Home';
 import Health from './src/screens/Health';
 import Gym from './src/screens/Gym';
 import Exercise from './src/screens/Exercise';
+import Reminders from './src/screens/Reminders';
 
 import RadialMenu, { RadialMenuItem } from './src/components/RadialMenu';
 import { navigationRef, navigate } from './src/navigation/navigationRef';
@@ -36,6 +37,12 @@ export default function App() {
       icon: 'barbell-outline',
       onPress: () => navigate('Gym'),
     },
+    {
+      id: 'reminders',
+      name: 'Lembretes',
+      icon: 'alarm-outline',
+      onPress: () => navigate('Reminders'),
+    },
   ];
 
   return (
@@ -52,6 +59,7 @@ export default function App() {
           <Stack.Screen name="Home" component={Home} options={{ title: 'Início' }} />
           <Stack.Screen name="Health" component={Health} options={{ title: 'Saúde / Fitness' }} />
           <Stack.Screen name="Gym" component={Gym} options={{ title: 'Treino' }} />
+          <Stack.Screen name="Reminders" component={Reminders} options={{ title: 'Lembretes' }} />
           <Stack.Screen
             name="Exercise"
             component={Exercise}

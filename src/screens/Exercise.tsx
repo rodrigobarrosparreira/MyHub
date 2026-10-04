@@ -9,16 +9,14 @@ import { carregarExercicios, salvarExercicios } from "../storage/exercicios";
 type Props = NativeStackScreenProps<RootStackParamList, "Exercise">;
 
 export default function Exercise({ route }: Props) {
-    const { id } = route.params; // id do exercício que foi clicado na tela Gym
+    const { id } = route.params;
 
     const [exercicios, setExercicios] = useState<Exercicio[]>([]);
     const [peso, setPeso] = useState("");
     const [series, setSeries] = useState("");
     const [repeticoes, setRepeticoes] = useState("");
-    // id do registro sendo editado; null quando o formulário está sendo usado para adicionar
     const [editandoId, setEditandoId] = useState<string | null>(null);
 
-    // carrega os dados salvos uma vez, quando a tela abre
     useEffect(() => {
         carregarExercicios().then(setExercicios);
     }, []);
@@ -26,11 +24,8 @@ export default function Exercise({ route }: Props) {
     const exercicio = exercicios.find((e) => e.id === id);
     const registros = exercicio ? exercicio.registros : [];
 
-    // histórico do mais novo pro mais antigo (reverse altera o array, por isso a cópia com [...])
     const historico = [...registros].reverse();
 
-    // toda alteração nos registros passa por aqui:
-    // troca os registros só do exercício atual, atualiza a tela e salva no celular
     async function atualizarRegistros(novosRegistros: Registro[]) {
         const novaLista = exercicios.map((e) =>
             e.id === id ? { ...e, registros: novosRegistros } : e
@@ -40,7 +35,6 @@ export default function Exercise({ route }: Props) {
     }
 
     async function salvar() {
-        // aceita vírgula ou ponto no peso (ex.: 12,5 ou 12.5)
         const pesoNumero = Number(peso.replace(",", "."));
         const seriesNumero = Number(series);
         const repeticoesNumero = Number(repeticoes);
@@ -52,7 +46,6 @@ export default function Exercise({ route }: Props) {
         }
 
         if (editandoId === null) {
-            // modo adicionar: cria um registro novo com a data de agora
             const novoRegistro: Registro = {
                 id: Date.now().toString(),
                 data: new Date().toISOString(),
@@ -62,7 +55,6 @@ export default function Exercise({ route }: Props) {
             };
             await atualizarRegistros([...registros, novoRegistro]);
         } else {
-            // modo editar: troca os valores do registro, mantendo o id e a data originais
             await atualizarRegistros(
                 registros.map((r) =>
                     r.id === editandoId
@@ -72,11 +64,10 @@ export default function Exercise({ route }: Props) {
             );
         }
 
-        cancelarEdicao(); // limpa os campos e volta para o modo adicionar
+        cancelarEdicao();
     }
 
     function comecarEdicao(registro: Registro) {
-        // os campos de texto guardam string, então convertemos os números
         setPeso(String(registro.peso));
         setSeries(String(registro.series));
         setRepeticoes(String(registro.repeticoes));
@@ -142,9 +133,7 @@ export default function Exercise({ route }: Props) {
                 contentContainerStyle={styles.lista}
                 ListEmptyComponent={<Text style={styles.vazio}>Nenhum registro ainda.</Text>}
                 renderItem={({ item, index }) => {
-                    // como a lista está invertida, o registro anterior (mais antigo) é o próximo índice
                     const anterior = historico[index + 1];
-                    // arredonda para 2 casas, porque contas com decimais podem dar 2.1999999...
                     const diferenca = anterior ? Math.round((item.peso - anterior.peso) * 100) / 100 : 0;
 
                     return (
@@ -236,7 +225,7 @@ const styles = StyleSheet.create({
     },
     lista: {
         gap: 8,
-        paddingBottom: 120, // espaço para o menu radial não cobrir o último item
+        paddingBottom: 120,
     },
     vazio: {
         textAlign: "center",
@@ -252,7 +241,7 @@ const styles = StyleSheet.create({
         borderColor: "#E2E8F0",
     },
     cardEditando: {
-        borderColor: "#0F172A", // destaca o registro que está sendo editado
+        borderColor: "#0F172A",
     },
     cardConteudo: {
         flex: 1,

@@ -24,22 +24,25 @@ interface RadialMenuProps {
   items: RadialMenuItem[];
 }
 
-// Configurações dimensionais calibradas e compactas
-const RADIUS = 100;          // Raio compacto na medida certa para não sobrepor o botão
-const BUTTON_SIZE = 56;     // Botão principal
-const ITEM_SIZE = 42;       // Botões filhos compactos
-const ANGLE_STEP = 42;      // Espaçamento angular entre os botões (em graus)
+const RADIUS = 100;
+const BUTTON_SIZE = 56;
+const ITEM_SIZE = 42;
+const ANGLE_STEP = 42;
+const FIRST_ANGLE = 16;
+const VISIBLE_MIN = 10;
+const VISIBLE_MAX = 85;
 
 export default function RadialMenu({ items }: RadialMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [rotationStep, setRotationStep] = useState(0);
 
   const openProgress = useSharedValue(0);
   const rotationOffset = useSharedValue(0);
   const startRotation = useSharedValue(0);
 
-  const maxScroll = Math.max(0, (items.length - 2) * ANGLE_STEP);
+  const maxSteps = Math.max(0, items.length - 2);
+  const maxScroll = maxSteps * ANGLE_STEP;
 
-  // Animação rápida e direta (180ms para abrir, 140ms para fechar)
   const toggleMenu = () => {
     if (isOpen) {
       openProgress.value = withTiming(0, {
@@ -47,6 +50,7 @@ export default function RadialMenu({ items }: RadialMenuProps) {
         easing: Easing.in(Easing.cubic),
       });
       rotationOffset.value = withTiming(0, { duration: 140 });
+      setRotationStep(0);
       setIsOpen(false);
     } else {
       setIsOpen(true);
@@ -57,7 +61,6 @@ export default function RadialMenu({ items }: RadialMenuProps) {
     }
   };
 
-  // Gesto de rotação (Pan) com distância mínima para não capturar toques acidentais
   const panGesture = Gesture.Pan()
     .minDistance(12)
     .onStart(() => {
@@ -72,11 +75,9 @@ export default function RadialMenu({ items }: RadialMenuProps) {
       }
     })
     .onEnd(() => {
-      if (rotationOffset.value < 0) {
-        rotationOffset.value = withTiming(0, { duration: 150 });
-      } else if (rotationOffset.value > maxScroll) {
-        rotationOffset.value = withTiming(maxScroll, { duration: 150 });
-      }
+      const step = Math.min(Math.max(Math.round(rotationOffset.value / ANGLE_STEP), 0), maxSteps);
+      rotationOffset.value = withTiming(step * ANGLE_STEP, { duration: 150 });
+      runOnJS(setRotationStep)(step);
     });
 
   const fabAnimatedStyle = useAnimatedStyle(() => {
@@ -95,17 +96,14 @@ export default function RadialMenu({ items }: RadialMenuProps) {
 
   return (
     <View style={styles.overlayContainer} pointerEvents="box-none">
-      {/* Fundo que fecha ao clicar fora */}
       {isOpen && (
         <Pressable style={styles.backdrop} onPress={toggleMenu} />
       )}
 
-      {/* Traçado da circunferência pontilhada */}
       {isOpen && (
         <Animated.View style={[styles.arcCircle, arcAnimatedStyle]} pointerEvents="none" />
       )}
 
-      {/* Zona da Roleta: captura o arrasto em toda a área do arco sem fechar ao errar o ícone */}
       {isOpen && (
         <GestureDetector gesture={panGesture}>
           <View style={styles.dialZone}>
@@ -114,6 +112,7 @@ export default function RadialMenu({ items }: RadialMenuProps) {
                 key={item.id}
                 item={item}
                 index={index}
+                tappable={isAngleVisible(FIRST_ANGLE + (index - rotationStep) * ANGLE_STEP)}
                 openProgress={openProgress}
                 rotationOffset={rotationOffset}
                 onSelect={() => {
@@ -126,7 +125,6 @@ export default function RadialMenu({ items }: RadialMenuProps) {
         </GestureDetector>
       )}
 
-      {/* Botão Principal */}
       <Pressable style={styles.fabButton} onPress={toggleMenu}>
         <Animated.View style={fabAnimatedStyle}>
           <Ionicons
@@ -140,26 +138,31 @@ export default function RadialMenu({ items }: RadialMenuProps) {
   );
 }
 
+function isAngleVisible(angle: number) {
+  return angle >= VISIBLE_MIN && angle <= VISIBLE_MAX;
+}
+
 function RadialItemComponent({
   item,
   index,
+  tappable,
   openProgress,
   rotationOffset,
   onSelect,
 }: {
   item: RadialMenuItem;
   index: number;
+  tappable: boolean;
   openProgress: SharedValue<number>;
   rotationOffset: SharedValue<number>;
   onSelect: () => void;
 }) {
-  // Gesto nativo de Tap: garante que o clique execute mesmo com o Pan ativo
   const tapGesture = Gesture.Tap().onEnd(() => {
     runOnJS(onSelect)();
   });
 
   const animatedStyle = useAnimatedStyle(() => {
-    const baseAngle = 16 + index * ANGLE_STEP;
+    const baseAngle = FIRST_ANGLE + index * ANGLE_STEP;
     const currentAngle = baseAngle - rotationOffset.value;
     const rad = (currentAngle * Math.PI) / 180;
 
@@ -172,7 +175,7 @@ function RadialItemComponent({
     const opacity =
       interpolate(
         currentAngle,
-        [-10, 10, 85, 105],
+        [VISIBLE_MIN - 20, VISIBLE_MIN, VISIBLE_MAX, VISIBLE_MAX + 20],
         [0, 1, 1, 0],
         Extrapolation.CLAMP
       ) * openProgress.value;
@@ -180,7 +183,7 @@ function RadialItemComponent({
     const scale =
       interpolate(
         currentAngle,
-        [-10, 10, 85, 105],
+        [VISIBLE_MIN - 20, VISIBLE_MIN, VISIBLE_MAX, VISIBLE_MAX + 20],
         [0.5, 1, 1, 0.5],
         Extrapolation.CLAMP
       ) * openProgress.value;
@@ -192,7 +195,10 @@ function RadialItemComponent({
   });
 
   return (
-    <Animated.View style={[styles.itemWrapper, animatedStyle]}>
+    <Animated.View
+      style={[styles.itemWrapper, animatedStyle]}
+      pointerEvents={tappable ? 'auto' : 'none'}
+    >
       <GestureDetector gesture={tapGesture}>
         <View style={styles.buttonAndLabelContainer}>
           <View style={styles.labelBadge}>
@@ -265,14 +271,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 28 + BUTTON_SIZE / 2 - ITEM_SIZE / 2,
     bottom: 36 + BUTTON_SIZE / 2 - ITEM_SIZE / 2,
-    width: ITEM_SIZE,
-    height: ITEM_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   buttonAndLabelContainer: {
-    position: 'absolute',
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
   },

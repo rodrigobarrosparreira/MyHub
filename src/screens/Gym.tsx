@@ -12,18 +12,14 @@ type Props = NativeStackScreenProps<RootStackParamList, "Gym">;
 export default function Gym({ navigation }: Props) {
     const [exercicios, setExercicios] = useState<Exercicio[]>([]);
     const [nome, setNome] = useState("");
-    // id do exercício sendo editado; null quando o campo está sendo usado para adicionar
     const [editandoId, setEditandoId] = useState<string | null>(null);
 
-    // recarrega a lista toda vez que a tela aparece
-    // (ex.: ao voltar da tela do exercício depois de adicionar um registro)
     useFocusEffect(
         useCallback(() => {
             carregarExercicios().then(setExercicios);
         }, [])
     );
 
-    // toda alteração na lista passa por aqui: atualiza a tela e salva no celular
     async function atualizarLista(novaLista: Exercicio[]) {
         setExercicios(novaLista);
         await salvarExercicios(novaLista);
@@ -36,7 +32,6 @@ export default function Gym({ navigation }: Props) {
         }
 
         if (editandoId === null) {
-            // modo adicionar: cria um exercício novo no fim da lista
             const novo: Exercicio = {
                 id: Date.now().toString(),
                 nome: nomeLimpo,
@@ -44,13 +39,12 @@ export default function Gym({ navigation }: Props) {
             };
             await atualizarLista([...exercicios, novo]);
         } else {
-            // modo editar: troca só o nome do exercício que está sendo editado
             await atualizarLista(
                 exercicios.map((e) => (e.id === editandoId ? { ...e, nome: nomeLimpo } : e))
             );
         }
 
-        cancelarEdicao(); // limpa o campo e volta para o modo adicionar
+        cancelarEdicao();
     }
 
     function comecarEdicao(exercicio: Exercicio) {
@@ -64,7 +58,6 @@ export default function Gym({ navigation }: Props) {
     }
 
     function apagarExercicio(exercicio: Exercicio) {
-        // pede confirmação antes, porque apaga também todo o histórico
         Alert.alert("Apagar exercício", `Apagar "${exercicio.nome}" e todo o histórico?`, [
             { text: "Cancelar", style: "cancel" },
             {
@@ -106,7 +99,6 @@ export default function Gym({ navigation }: Props) {
                 contentContainerStyle={styles.lista}
                 ListEmptyComponent={<Text style={styles.vazio}>Nenhum exercício cadastrado ainda.</Text>}
                 renderItem={({ item }) => {
-                    // o último registro é o mais recente
                     const ultimo = item.registros[item.registros.length - 1];
 
                     return (
@@ -176,7 +168,7 @@ const styles = StyleSheet.create({
     },
     lista: {
         gap: 8,
-        paddingBottom: 120, // espaço para o menu radial não cobrir o último item
+        paddingBottom: 120,
     },
     vazio: {
         textAlign: "center",
@@ -192,7 +184,7 @@ const styles = StyleSheet.create({
         borderColor: "#E2E8F0",
     },
     cardEditando: {
-        borderColor: "#0F172A", // destaca o card que está sendo editado
+        borderColor: "#0F172A",
     },
     cardConteudo: {
         flex: 1,

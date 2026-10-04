@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, StyleSheet, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Lembrete } from "../types/lembrete";
 import { carregarLembretes, salvarLembretes } from "../storage/lembretes";
 import {
@@ -10,23 +11,12 @@ import {
     notificacoesDisponiveis,
 } from "../notifications/lembretes";
 
-// transforma o que foi digitado nos campos em uma data de verdade.
-// devolve null quando o texto não forma uma data válida.
-function montarData(dataTexto: string, horaTexto: string): Date | null {
-    const [dia, mes, ano] = dataTexto.split("/").map(Number);
-    const [hora, minuto] = horaTexto.split(":").map(Number);
-
-    // em JavaScript os meses vão de 0 (janeiro) a 11 (dezembro), por isso o mes - 1
-    const data = new Date(ano, mes - 1, dia, hora, minuto);
-
-    // se qualquer campo estiver errado, a data criada é inválida
-    if (isNaN(data.getTime())) {
-        return null;
-    }
+function daquiUmaHora(): Date {
+    const data = new Date(Date.now() + 60 * 60 * 1000);
+    data.setSeconds(0, 0);
     return data;
 }
 
-// mostra a data no formato brasileiro, ex.: "05/10/2026 às 18:30"
 function formatarData(iso: string): string {
     const data = new Date(iso);
     const dia = data.toLocaleDateString("pt-BR");
@@ -38,22 +28,18 @@ export default function Reminders() {
     const [lembretes, setLembretes] = useState<Lembrete[]>([]);
     const [titulo, setTitulo] = useState("");
     const [texto, setTexto] = useState("");
-    const [data, setData] = useState("");
-    const [hora, setHora] = useState("");
+    const [quando, setQuando] = useState<Date>(daquiUmaHora());
+    const [seletorAberto, setSeletorAberto] = useState<"date" | "time" | null>(null);
 
-    // carrega os lembretes salvos e pede permissão de notificação, uma vez só
     useEffect(() => {
         carregarLembretes().then(setLembretes);
         pedirPermissao();
     }, []);
 
-    // a lista é exibida em ordem cronológica: o lembrete mais próximo primeiro.
-    // a cópia com [...] é necessária porque o sort altera o array original.
     const ordenados = [...lembretes].sort(
         (a, b) => new Date(a.quando).getTime() - new Date(b.quando).getTime()
     );
 
-    // toda alteração na lista passa por aqui: atualiza a tela e salva no celular
     async function atualizarLista(novaLista: Lembrete[]) {
         setLembretes(novaLista);
         await salvarLembretes(novaLista);
@@ -66,13 +52,6 @@ export default function Reminders() {
             return;
         }
 
-        const quando = montarData(data, hora);
-        if (quando === null) {
-            Alert.alert("Atenção", "Use data no formato DD/MM/AAAA e hora no formato HH:MM.");
-            return;
-        }
-
-        // uma notificação só pode ser agendada para o futuro
         if (quando.getTime() <= Date.now()) {
             Alert.alert("Atenção", "Escolha uma data e hora que ainda não passaram.");
             return;
@@ -80,7 +59,6 @@ export default function Reminders() {
 
         const textoLimpo = texto.trim();
 
-        // agenda o aviso e guarda o id devolvido, para poder cancelar depois
         const notificacaoId = await agendarNotificacao(tituloLimpo, textoLimpo, quando);
 
         const novo: Lembrete = {
@@ -99,18 +77,21 @@ export default function Reminders() {
     function limparFormulario() {
         setTitulo("");
         setTexto("");
-        setData("");
-        setHora("");
+        setQuando(daquiUmaHora());
+    }
+
+    function aoEscolher(evento: DateTimePickerEvent, escolhida?: Date) {
+        setSeletorAberto(null);
+        if (evento.type === "set" && escolhida !== undefined) {
+            setQuando(escolhida);
+        }
     }
 
     async function alternarConcluido(lembrete: Lembrete) {
-        // ao concluir, cancela o aviso que ainda não disparou
         if (!lembrete.concluido && lembrete.notificacaoId !== null) {
             await cancelarNotificacao(lembrete.notificacaoId);
         }
 
-        // desmarcar não reagenda o aviso de propósito: assim não precisamos
-        // decidir o que fazer quando a data já passou
         await atualizarLista(
             lembretes.map((l) =>
                 l.id === lembrete.id ? { ...l, concluido: !l.concluido, notificacaoId: null } : l
@@ -125,8 +106,6 @@ export default function Reminders() {
                 text: "Apagar",
                 style: "destructive",
                 onPress: async () => {
-                    // cancela antes de apagar, senão o aviso dispara
-                    // para um lembrete que não existe mais
                     if (lembrete.notificacaoId !== null) {
                         await cancelarNotificacao(lembrete.notificacaoId);
                     }
@@ -166,25 +145,31 @@ export default function Reminders() {
             <View style={styles.linha}>
                 <View style={styles.campo}>
                     <Text style={styles.label}>Data</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="DD/MM/AAAA"
-                        keyboardType="number-pad"
-                        value={data}
-                        onChangeText={setData}
-                    />
+                    <Pressable style={[styles.input, styles.seletor]} onPress={() => setSeletorAberto("date")}>
+                        <Ionicons name="calendar-outline" size={18} color="#475569" />
+                        <Text>{quando.toLocaleDateString("pt-BR")}</Text>
+                    </Pressable>
                 </View>
                 <View style={styles.campo}>
                     <Text style={styles.label}>Hora</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="HH:MM"
-                        keyboardType="number-pad"
-                        value={hora}
-                        onChangeText={setHora}
-                    />
+                    <Pressable style={[styles.input, styles.seletor]} onPress={() => setSeletorAberto("time")}>
+                        <Ionicons name="time-outline" size={18} color="#475569" />
+                        <Text>
+                            {quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        </Text>
+                    </Pressable>
                 </View>
             </View>
+
+            {seletorAberto !== null && (
+                <DateTimePicker
+                    value={quando}
+                    mode={seletorAberto}
+                    is24Hour
+                    minimumDate={new Date()}
+                    onChange={aoEscolher}
+                />
+            )}
 
             <Pressable style={styles.botao} onPress={adicionar}>
                 <Text style={styles.botaoTexto}>Adicionar lembrete</Text>
@@ -258,7 +243,7 @@ const styles = StyleSheet.create({
     },
     inputTexto: {
         minHeight: 60,
-        textAlignVertical: "top", // no Android o texto começa no topo da caixa
+        textAlignVertical: "top",
     },
     linha: {
         flexDirection: "row",
@@ -266,6 +251,11 @@ const styles = StyleSheet.create({
     },
     campo: {
         flex: 1,
+    },
+    seletor: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
     },
     label: {
         color: "#475569",
@@ -291,7 +281,7 @@ const styles = StyleSheet.create({
     },
     lista: {
         gap: 8,
-        paddingBottom: 120, // espaço para o menu radial não cobrir o último item
+        paddingBottom: 120,
     },
     vazio: {
         textAlign: "center",
@@ -307,7 +297,7 @@ const styles = StyleSheet.create({
         borderColor: "#E2E8F0",
     },
     cardConcluido: {
-        backgroundColor: "#F8FAFC", // fica mais apagado que os pendentes
+        backgroundColor: "#F8FAFC",
     },
     cardConteudo: {
         flex: 1,

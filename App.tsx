@@ -63,13 +63,11 @@ export default function App() {
           <Stack.Screen
             name="Exercise"
             component={Exercise}
-            // o título do cabeçalho é o nome do exercício, que vem nos parâmetros da rota
             options={({ route }) => ({ title: route.params.nome })}
           />
         </Stack.Navigator>
       </NavigationContainer>
 
-      {/* Menu Radial Flutuante acessível pelo polegar */}
       <RadialMenu items={menuItems} />
     </GestureHandlerRootView>
   );

@@ -14,17 +14,20 @@ export default function Gym({ navigation }: Props) {
     const [nome, setNome] = useState("");
     const [editandoId, setEditandoId] = useState<string | null>(null);
 
+    //recarrega a tela por conta da lista de exercícios que pode ter sido alterada
     useFocusEffect(
         useCallback(() => {
             carregarExercicios().then(setExercicios);
         }, [])
     );
 
+    //mudar a lista
     async function atualizarLista(novaLista: Exercicio[]) {
         setExercicios(novaLista);
         await salvarExercicios(novaLista);
     }
 
+    //adicionar um novo exercício
     async function salvar() {
         const nomeLimpo = nome.trim();
         if (nomeLimpo === "") {
@@ -47,6 +50,7 @@ export default function Gym({ navigation }: Props) {
         cancelarEdicao();
     }
 
+    // editar um exercício (nome)
     function comecarEdicao(exercicio: Exercicio) {
         setNome(exercicio.nome);
         setEditandoId(exercicio.id);
